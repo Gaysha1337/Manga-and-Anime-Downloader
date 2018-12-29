@@ -1,23 +1,37 @@
 import requests, os
 from bs4 import BeautifulSoup
+from terminaltables import AsciiTable
 
-print("WELCOME TO MY MANGA DOWNLOADER, THIS SCRIPT WILL DOWNLOAD ANY MANGA ")
+query = input("Type a manga title (can be a keyword): ")
 
-print("\n")
-print("DEAR USER, IF MY SCRIPT CANNOT FIND YOUR MANGA,")
-print("PLEASE VISIT THE LINK BELOW AND ENTER IN THE NAME OF THE MANGA")
-print("PLEASE COPY EVERYTHING AFTER THE LAST SLASH ('/' )")
-print("AN EXAMPLE: https://manganelo.com/manga/read_tokyo_ghoul_manga_online_free4")
-print("COPY THIS BIT FROM THE LINK ABOVE: read_tokyo_ghoul_manga_online_free4 AND PASTE IT")
-print("\n")
+query_url = "https://manganelo.com/search/{}".format(query.strip().replace(" ","_"))
+request_query_html = requests.get(query_url).content
 
-print("PLEASE NOTE DEPENDING ON THE AMOUNT OF CHAPTERS IN YOUR SPECFIED MANGA, THIS PROCESS MIGHT TAKE A WHILE")
-print("PLEASE NOTE THAT YOU MAY ONLY RENAME THE FOLDERS ONCE YOUR MANGA HAS BEEN DOWNLOADED, OR ELSE THE SCRIPT WILL CRASH")
-print("\n")
+soup = BeautifulSoup(request_query_html,"html.parser")
 
-manga_input = input("Type or paste a manga name ").strip().lower()
+query_div_items = soup.find("div",attrs={"class":"daily-update"}).findChildren("a")
+query_info_dicts = [{"q_link":a.get("href"),"q_name":a.text} for a in query_div_items if not a.has_attr("class")]
+manga_links = [q_dict.get("q_link") for q_dict in query_info_dicts]
+manga_choices = [q_dict.get("q_name") for q_dict in query_info_dicts]
+
+def create_manga_choice_table(manga_choices):
+    data = []
+    choice_number = 0
+    for choice in manga_choices:
+        choice_number += 1
+        data.append(['Manga Name: ' + choice, 'Manga Number: ' + str(choice_number)])
+    table = AsciiTable(data)
+    table.inner_heading_row_border = False
+    table.title = "Manga Choices: "
+    print(table.table)
+    return int(input("\nDear User, please type in the number that corresponds to the manga that you wish to download: ").strip())
+
+user_number_choice = create_manga_choice_table(manga_choices)
+print(manga_links[user_number_choice - 1]) # prints the url of the user's chosen manga name
+manga_input = manga_choices[user_number_choice - 1]
+
 manga_root_dir = os.path.join(os.path.expanduser("~/Desktop"),"Manga")
-current_manga_dir = os.path.join(manga_root_dir,manga_input.capitalize())
+current_manga_dir = os.path.join(manga_root_dir,manga_input)
 
  # Makes a "root" for all downloaded mangas; Makes a folder that keeps all ur downloaded manga
 if not os.path.isdir(manga_root_dir):
@@ -33,6 +47,8 @@ else:
     print("You already have a folder for {}, if you would like to redownload this manga, please delete its folder".format(manga_input.capitalize()))
 os.chdir(current_manga_dir)
 
+url = manga_links[user_number_choice - 1]
+
 def write_meta_data_file():
     meta_data_li_tags = soup.find("ul",attrs={"class":"manga-info-text"}).findChildren("li")
     summary_div = soup.find("div",attrs={"id":"noidungm"})
@@ -42,8 +58,6 @@ def write_meta_data_file():
         if "." in word or "," in word or word == split_summary[1]:
             word+="\n"
         formatted_summary += word + " "
-    print(formatted_summary)
-        
     meta_data_list = [tag.text.strip() for tag in meta_data_li_tags]
     for datum in meta_data_list:
         meta_data_list.pop(4)
@@ -52,8 +66,7 @@ def write_meta_data_file():
     with open("info.txt","w",encoding='utf-8') as f:
         f.write("\n".join(meta_data_list))
         f.write(formatted_summary)
-        
-url = "https://manganelo.com/manga/{}".format(manga_input.replace(" ","_")) # url = "https://manganelo.com/manga/read_deadman_wonderland"
+
 chapter_list_html = requests.get(url).content
 
 # HTML RELATED
@@ -98,3 +111,5 @@ for img_dict in img_info:
 
 
 print("All chapters downloaded")
+
+    
