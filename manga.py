@@ -11,8 +11,9 @@ soup = BeautifulSoup(request_query_html,"html.parser")
 
 query_div_items = soup.find("div",attrs={"class":"daily-update"}).findChildren("a")
 query_info_dicts = [{"q_link":a.get("href"),"q_name":a.text} for a in query_div_items if not a.has_attr("class")]
-manga_links = [q_dict.get("q_link") for q_dict in query_info_dicts]
-manga_choices = [q_dict.get("q_name") for q_dict in query_info_dicts]
+manga_links = [i.find("a").get("href") for i in soup.select(".story_name")]
+manga_choices = [i.find("a").text for i in soup.select(".story_name")]
+
 
 def create_manga_choice_table(manga_choices):
     data = []
@@ -36,7 +37,7 @@ current_manga_dir = os.path.join(manga_root_dir,manga_input)
  # Makes a "root" for all downloaded mangas; Makes a folder that keeps all ur downloaded manga
 if not os.path.isdir(manga_root_dir):
     os.mkdir(manga_root_dir)
-    print("Manag root made; Current directory {}".format(manga_root_dir))
+    print("Manga root made; Current directory {}".format(manga_root_dir))
 else:
     print("You already have a manga root")
 
@@ -112,4 +113,3 @@ for img_dict in img_info:
 
 print("All chapters downloaded")
 
-    
